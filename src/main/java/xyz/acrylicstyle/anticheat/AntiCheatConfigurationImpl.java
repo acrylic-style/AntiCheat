@@ -57,12 +57,12 @@ public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
 
     @Override
     public int getFlyVerticalThreshold() {
-        return this.getInt("flyVerticalThreshold", 10);
+        return this.getInt("flyVerticalThreshold", 12);
     }
 
     @Override
     public int getClicksThreshold() {
-        return this.getInt("clicksThreshold", 38);
+        return this.getInt("clicksThreshold", 35);
     }
 
     @Override
