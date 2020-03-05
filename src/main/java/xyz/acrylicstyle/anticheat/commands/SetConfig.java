@@ -3,17 +3,13 @@ package xyz.acrylicstyle.anticheat.commands;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
-import xyz.acrylicstyle.anticheat.command.CustomCommand;
+import xyz.acrylicstyle.anticheat.api.command.CustomCommand;
 
 public class SetConfig implements CustomCommand {
     @Override
     public void onCommand(Player sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ChatColor.RED + "/ac set <key> <value>");
-            return;
-        }
-        if (!AntiCheatPlugin.getInstance().getConfig().getKeys(false).contains(args[0])) {
-            sender.sendMessage(ChatColor.RED + "Cannot set config value for non-existent config key");
             return;
         }
         Object value = args[1];

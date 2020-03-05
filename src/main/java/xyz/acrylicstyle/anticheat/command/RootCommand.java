@@ -10,6 +10,7 @@ import util.CollectionList;
 import util.ICollectionList;
 import util.StringCollection;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
+import xyz.acrylicstyle.anticheat.api.command.CustomCommand;
 
 public class RootCommand implements CommandExecutor {
     @Override
