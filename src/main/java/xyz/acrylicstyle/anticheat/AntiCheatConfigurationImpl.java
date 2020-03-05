@@ -17,7 +17,7 @@ public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
 
     @Override
     public boolean detectFly() {
-        return this.getBoolean("detectFly", true);
+        return this.getBoolean("detectFly", false);
     }
 
     @Override
@@ -27,7 +27,7 @@ public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
 
     @Override
     public boolean detectSpeed() {
-        return this.getBoolean("detectSpeed", true);
+        return this.getBoolean("detectSpeed", false);
     }
 
     @Override

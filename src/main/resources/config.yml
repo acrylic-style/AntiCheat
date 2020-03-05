@@ -1,9 +1,9 @@
 detectBlink: true
-detectFly: true
+detectFly: false
 detectClickBot: true
-detectSpeed: true
+detectSpeed: false
 
 blinkPacketsThreshold: 40
-flyVerticalThreshold: 10
+flyVerticalThreshold: 12
 clicksThreshold: 38
 speedThreshold: 30
