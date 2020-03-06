@@ -49,6 +49,7 @@ public class RootCommand implements CommandExecutor {
 
     public void $sendMessage(CommandSender sender) {
         sender.sendMessage(ChatColor.GOLD + "-----------------------------------");
+        sender.sendMessage(getCommandHelp("/ac check <Player>", "Check player's status."));
         sender.sendMessage(getCommandHelp("/ac set <key> <value>", "Set config."));
         sender.sendMessage(getCommandHelp("/ac reload", "Reloads config."));
         sender.sendMessage(getCommandHelp("/ac version", "Shows AntiCheat plugin's version."));

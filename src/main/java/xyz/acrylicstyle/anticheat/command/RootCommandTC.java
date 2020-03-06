@@ -1,8 +1,10 @@
 package xyz.acrylicstyle.anticheat.command;
 
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import util.CollectionList;
@@ -17,6 +19,9 @@ public class RootCommandTC implements TabCompleter {
         List<String> emptyList = new ArrayList<>();
         if (args.length == 0) return AntiCheatPlugin.bindings.getCommands().keysList();
         if (args.length == 1) return filterArgsList(AntiCheatPlugin.bindings.getCommands().keysList(), args[0]);
+        if (args.length == 2) {
+            if (args[0].equals("check")) return filterArgsList(new CollectionList<>(Bukkit.getOnlinePlayers()).map(Player::getName), args[1]);
+        }
         return emptyList;
     }
 

@@ -24,6 +24,7 @@ import xyz.acrylicstyle.anticheat.api.AntiCheatConfiguration;
 import xyz.acrylicstyle.anticheat.api.command.CommandBindings;
 import xyz.acrylicstyle.anticheat.command.RootCommand;
 import xyz.acrylicstyle.anticheat.command.RootCommandTC;
+import xyz.acrylicstyle.anticheat.commands.Check;
 import xyz.acrylicstyle.anticheat.commands.Reload;
 import xyz.acrylicstyle.anticheat.commands.SetConfig;
 import xyz.acrylicstyle.anticheat.commands.Version;
@@ -62,6 +63,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         bindings.addCommand("set", new SetConfig());
         bindings.addCommand("reload", new Reload());
         bindings.addCommand("version", new Version());
+        bindings.addCommand("check", new Check());
         Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setExecutor(new RootCommand());
         Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setTabCompleter(new RootCommandTC());
         Bukkit.getPluginManager().registerEvents(this, this);
