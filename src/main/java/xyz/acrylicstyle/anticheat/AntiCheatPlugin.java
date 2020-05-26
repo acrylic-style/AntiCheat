@@ -9,6 +9,7 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
@@ -17,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import util.Collection;
 import util.CollectionList;
+import util.ReflectionHelper;
 import xyz.acrylicstyle.anticheat.api.AntiCheat;
 import xyz.acrylicstyle.anticheat.api.AntiCheatConfiguration;
 import xyz.acrylicstyle.anticheat.api.command.CommandBindings;
@@ -29,6 +31,7 @@ import xyz.acrylicstyle.anticheat.commands.Version;
 import xyz.acrylicstyle.tomeito_api.providers.ConfigProvider;
 import xyz.acrylicstyle.tomeito_api.utils.Log;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,9 +125,26 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         return config.kickPlayer();
     }
 
+    public static boolean checkPlayerInteractEvent_getHand() {
+        return ReflectionHelper.findMethod(PlayerInteractEvent.class, "getHand") != null;
+    }
+
+    @Nullable
+    public static EquipmentSlot getHand(PlayerInteractEvent e) {
+        if (checkPlayerInteractEvent_getHand()) {
+            try {
+                return (EquipmentSlot) ReflectionHelper.invokeMethod(e.getClass(), e, "getHand");
+            } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException ex) {
+                throw new RuntimeException(ex);
+            }
+        } else return null;
+    }
+
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
         //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
+        EquipmentSlot slot = getHand(e);
+        if (slot != null && slot != EquipmentSlot.HAND) return;
         if (!cps.containsKey(e.getPlayer().getUniqueId())) cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
         if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
         int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
