@@ -40,6 +40,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     private AntiCheatConfiguration config = null;
     public static CommandBindings bindings = new CommandBindings();
     public static ConfigProvider version = null;
+    public static CollectionList<UUID> notifyOff = new CollectionList<>();
 
     @Override
     public void onLoad() {
@@ -52,11 +53,13 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         this.saveResource("config.yml", false);
         config = new AntiCheatConfigurationImpl("./plugins/AntiCheat/config.yml");
         version = new ConfigProvider("./plugins/AntiCheat/version.yml");
-        bindings.addCommand("set", new SetConfig());
-        bindings.addCommand("reload", new Reload());
-        bindings.addCommand("version", new Version());
-        bindings.addCommand("check", new Check());
-        bindings.addCommand("get", new GetConfig());
+        bindings.addCommand("set", new SetConfigCommand());
+        bindings.addCommand("reload", new ReloadCommand());
+        bindings.addCommand("version", new VersionCommand());
+        bindings.addCommand("check", new CheckCommand());
+        bindings.addCommand("get", new GetConfigCommand());
+        bindings.addCommand("notify", new NotifyCommand());
+        bindings.addCommand("bypass", new BypassCommand());
         Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setExecutor(new RootCommand());
         Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setTabCompleter(new RootCommandTC());
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -209,6 +212,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     public void run() {
                         if (!player.isOnline()) return;
                         if (Reflections.isGliding(e.getPlayer())) return;
+                        if (e.getPlayer().isFlying()) return;
                         if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
                             return; // if the player teleported recently, cancel it
                         if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
@@ -217,7 +221,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                             }
                         }
                     }
-                }.runTaskLaterAsynchronously(this, 20);
+                }.runTaskLater(this, 20);
             }
         }
         //</editor-fold>
@@ -234,6 +238,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     public void run() {
                         if (!player.isOnline()) return;
                         if (Reflections.isGliding(e.getPlayer())) return;
+                        if (e.getPlayer().isFlying()) return;
                         if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
                             return; // if the player teleported recently, cancel it
                         double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
@@ -243,7 +248,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                             }
                         }
                     }
-                }.runTaskLaterAsynchronously(this, 20);
+                }.runTaskLater(this, 20);
             }
         }
         //</editor-fold>
@@ -262,7 +267,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     }
 
     public static void sendMessageToAllOperators(String message) {
-        getOnlineOperators().forEach(player -> player.sendMessage(message));
+        getOnlineOperators().filter(p -> !notifyOff.contains(p.getUniqueId())).forEach(player -> player.sendMessage(message));
     }
 
     public static AntiCheatPlugin getInstance() { return instance; }

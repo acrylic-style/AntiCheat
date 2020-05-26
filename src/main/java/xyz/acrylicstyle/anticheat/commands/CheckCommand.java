@@ -8,7 +8,7 @@ import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Check extends PlayerCommandExecutor {
+public class CheckCommand extends PlayerCommandExecutor {
     @Override
     public void onCommand(Player player, String[] args) {
         if (args.length == 0) {

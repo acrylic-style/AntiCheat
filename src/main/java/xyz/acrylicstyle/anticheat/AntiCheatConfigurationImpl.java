@@ -1,10 +1,35 @@
 package xyz.acrylicstyle.anticheat;
 
+import util.CollectionList;
+import util.ICollectionList;
 import xyz.acrylicstyle.anticheat.api.AntiCheatConfiguration;
+
+import java.util.List;
+import java.util.UUID;
 
 public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
     public AntiCheatConfigurationImpl(String path) {
         super(path);
+    }
+
+    @Override
+    public CollectionList<UUID> getBypassList() {
+        return ICollectionList.asList(this.getStringList("bypassList")).map(UUID::fromString);
+    }
+
+    @Override
+    public void setBypassList(List<UUID> list) {
+        this.set("bypassList", ICollectionList.asList(list).map(UUID::toString));
+    }
+
+    @Override
+    public void addBypassList(UUID uuid) {
+        setBypassList(getBypassList().clone().addChain(uuid));
+    }
+
+    @Override
+    public void removeBypassList(UUID uuid) {
+        setBypassList(getBypassList().clone().removeThenReturnCollection(uuid));
     }
 
     @Override

@@ -11,6 +11,7 @@ import util.ICollectionList;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +36,13 @@ public class RootCommandTC implements TabCompleter {
                 Map<String, Object> map = AntiCheatPlugin.getInstance().getConfiguration().getConfigSectionValue(prefix, false);
                 if (map == null) return new ArrayList<>();
                 return filterArgsList(new ArrayList<>(map.keySet()), args[1]).map(s -> (list.size() != 0 ? list.join(".") + "." : "") + s);
+            }
+            if (args[0].equals("bypass")) return filterArgsList(Arrays.asList("add", "remove"), args[1]);
+        }
+        if (args.length == 3) {
+            if (args[0].equals("bypass")
+                    && (args[1].equalsIgnoreCase("add") || args[1].equalsIgnoreCase("remove"))) {
+                return filterArgsList(ICollectionList.asList(new ArrayList<>(Bukkit.getOnlinePlayers())).map(Player::getName), args[2]);
             }
         }
         return emptyList;

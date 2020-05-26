@@ -20,8 +20,10 @@ public class Reflections {
     }
 
     public static boolean isGliding(Player player) {
-        if (ReflectionHelper.findMethod(Player.class, "isGliding") != null) {
+        try {
             return (boolean) Ref.getMethod(Player.class, "isGliding").invoke(player);
-        } else return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

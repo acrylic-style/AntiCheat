@@ -6,7 +6,7 @@ import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
 import xyz.acrylicstyle.tomeito_api.utils.Log;
 
-public class GetConfig extends PlayerCommandExecutor {
+public class GetConfigCommand extends PlayerCommandExecutor {
     @Override
     public void onCommand(Player sender, String[] args) {
         if (args.length == 0) {

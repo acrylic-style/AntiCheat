@@ -5,7 +5,7 @@ import org.bukkit.entity.Player;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
 
-public class Reload extends PlayerCommandExecutor {
+public class ReloadCommand extends PlayerCommandExecutor {
     @Override
     public void onCommand(Player sender, String[] args) {
         AntiCheatPlugin.getInstance().getConfiguration().reload();
