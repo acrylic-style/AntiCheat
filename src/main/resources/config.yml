@@ -5,7 +5,7 @@ detectSpeed: false
 
 blinkPacketsThreshold: 40
 flyVerticalThreshold: 12
-clicksThreshold: 38
-speedThreshold: 30
+clicksThreshold: 20
+speedThreshold: 12
 
 kickPlayer: false

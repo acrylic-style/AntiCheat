@@ -18,20 +18,16 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import util.Collection;
 import util.CollectionList;
-import util.ReflectionHelper;
 import xyz.acrylicstyle.anticheat.api.AntiCheat;
 import xyz.acrylicstyle.anticheat.api.AntiCheatConfiguration;
 import xyz.acrylicstyle.anticheat.api.command.CommandBindings;
 import xyz.acrylicstyle.anticheat.command.RootCommand;
 import xyz.acrylicstyle.anticheat.command.RootCommandTC;
-import xyz.acrylicstyle.anticheat.commands.Check;
-import xyz.acrylicstyle.anticheat.commands.Reload;
-import xyz.acrylicstyle.anticheat.commands.SetConfig;
-import xyz.acrylicstyle.anticheat.commands.Version;
+import xyz.acrylicstyle.anticheat.commands.*;
+import xyz.acrylicstyle.anticheat.reflection.Reflections;
 import xyz.acrylicstyle.tomeito_api.providers.ConfigProvider;
 import xyz.acrylicstyle.tomeito_api.utils.Log;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,6 +55,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         bindings.addCommand("reload", new Reload());
         bindings.addCommand("version", new Version());
         bindings.addCommand("check", new Check());
+        bindings.addCommand("get", new GetConfig());
         Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setExecutor(new RootCommand());
         Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setTabCompleter(new RootCommandTC());
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -125,39 +122,28 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         return config.kickPlayer();
     }
 
-    public static boolean checkPlayerInteractEvent_getHand() {
-        return ReflectionHelper.findMethod(PlayerInteractEvent.class, "getHand") != null;
-    }
-
-    @Nullable
-    public static EquipmentSlot getHand(PlayerInteractEvent e) {
-        if (checkPlayerInteractEvent_getHand()) {
-            try {
-                return (EquipmentSlot) ReflectionHelper.invokeMethod(e.getClass(), e, "getHand");
-            } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException ex) {
-                throw new RuntimeException(ex);
-            }
-        } else return null;
-    }
-
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
         //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
-        EquipmentSlot slot = getHand(e);
-        if (slot != null && slot != EquipmentSlot.HAND) return;
-        if (!cps.containsKey(e.getPlayer().getUniqueId())) cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
-        if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
-        int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
-        if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps) maxCps.put(e.getPlayer().getUniqueId(), currentCps);
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
+        if (config.detectClickBot()) {
+            EquipmentSlot slot = Reflections.getHand(e);
+            if (slot != null && slot != EquipmentSlot.HAND) return;
+            if (!cps.containsKey(e.getPlayer().getUniqueId()))
+                cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
+            if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
+            int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
+            if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
+                maxCps.put(e.getPlayer().getUniqueId(), currentCps);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
+                }
+            }.runTaskLater(this, 20);
+            if (currentCps >= config.getClicksThreshold()) {
+                if (log(e.getPlayer().getName(), "clicking too fast", "(" + currentCps + " cps)"))
+                    e.getPlayer().kickPlayer("You are sending too many packets!");
             }
-        }.runTaskLater(this, 20);
-        if (currentCps >= config.getClicksThreshold()) {
-            if (log(e.getPlayer().getName(), "clicking too fast", "(" + currentCps + " cps)"))
-                e.getPlayer().kickPlayer("You are sending too many packets!");
         }
         //</editor-fold>
     }
@@ -200,50 +186,58 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                 moves.get(e.getPlayer().getUniqueId()).decrementAndGet();
             }
         }.runTaskLater(this, 20);
-        if (move != -1 && config.getBlinkPacketsThreshold() < move) {
-            if (log(e.getPlayer().getName(), "sending too many move packets", "(" + move + " packets/s)")) {
-                e.getPlayer().kickPlayer("You are sending too many packets!");
+        if (config.detectBlink()) {
+            if (move != -1 && config.getBlinkPacketsThreshold() < move) {
+                if (log(e.getPlayer().getName(), "sending too many move packets", "(" + move + " packets/s)")) {
+                    e.getPlayer().kickPlayer("You are sending too many packets!");
+                }
+                return;
             }
-            return;
         }
         //</editor-fold>
         //<editor-fold desc="Fly Detection (Partial, only works when player is going up)" defaultstate="collapsed">
-        if (!player.hasPotionEffect(PotionEffectType.JUMP)
-                && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
-                && player.getGameMode() != GameMode.CREATIVE
-                && player.getGameMode() != GameMode.SPECTATOR) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (!player.isOnline()) return;
-                    if (teleportedRecently.contains(e.getPlayer().getUniqueId())) return; // if the player teleported recently, cancel it
-                    if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
-                        if (log(e.getPlayer().getName(), "flying", "(" + (player.getLocation().getY() - y) + " blocks/s)")) {
-                            kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
+        if (config.detectFly()) {
+            if (!player.hasPotionEffect(PotionEffectType.JUMP)
+                    && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
+                    && player.getGameMode() != GameMode.CREATIVE
+                    && player.getGameMode() != GameMode.SPECTATOR
+                    && !Reflections.isGliding(e.getPlayer())) {
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (!player.isOnline()) return;
+                        if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
+                            return; // if the player teleported recently, cancel it
+                        if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
+                            if (log(e.getPlayer().getName(), "flying", "(" + (player.getLocation().getY() - y) + " blocks/s)")) {
+                                kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
+                            }
                         }
                     }
-                }
-            }.runTaskLaterAsynchronously(this, 20);
+                }.runTaskLaterAsynchronously(this, 20);
+            }
         }
         //</editor-fold>
         //<editor-fold desc="Fly & Speed Detection" defaultstate="collapsed">
-        if (!player.hasPotionEffect(PotionEffectType.SPEED)
-                && !player.getAllowFlight()
-                && player.getWalkSpeed() <= 0.3
-                && player.getGameMode() != GameMode.CREATIVE
-                && player.getGameMode() != GameMode.SPECTATOR) {
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    if (!player.isOnline()) return;
-                    double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
-                    if (overall >= config.getSpeedThreshold()) {
-                        if (log(e.getPlayer().getName(), "speed/fly", "(" + overall + " blocks/s)")) {
-                            kickPlayer(e.getPlayer(), "You are sending too many packets!");
+        if (config.detectSpeed()) {
+            if (!player.hasPotionEffect(PotionEffectType.SPEED)
+                    && !player.getAllowFlight()
+                    && player.getWalkSpeed() <= 0.3
+                    && player.getGameMode() != GameMode.CREATIVE
+                    && player.getGameMode() != GameMode.SPECTATOR) {
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        if (!player.isOnline()) return;
+                        double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
+                        if (overall >= config.getSpeedThreshold()) {
+                            if (log(e.getPlayer().getName(), "speed/fly", "(" + overall + " blocks/s)")) {
+                                kickPlayer(e.getPlayer(), "You are sending too many packets!");
+                            }
                         }
                     }
-                }
-            }.runTaskLaterAsynchronously(this, 20);
+                }.runTaskLaterAsynchronously(this, 20);
+            }
         }
         //</editor-fold>
     }

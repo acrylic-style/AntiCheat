@@ -4,6 +4,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
+import xyz.acrylicstyle.tomeito_api.utils.Log;
 
 public class SetConfig extends PlayerCommandExecutor {
     @Override
@@ -28,8 +29,8 @@ public class SetConfig extends PlayerCommandExecutor {
                 }
             }
         } else value = null;
-        AntiCheatPlugin.getInstance().getConfig().set(args[0], value);
-        AntiCheatPlugin.getInstance().saveConfig();
+        AntiCheatPlugin.getInstance().getConfiguration().setThenSave(args[0], value);
+        Log.info("Set " + args[0] + " to " + value + " (" + (value == null ? "null" : value.getClass().getCanonicalName()) + ")");
         sender.sendMessage(ChatColor.GREEN + "設定を保存しました。");
     }
 }
