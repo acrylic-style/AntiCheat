@@ -208,6 +208,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     @Override
                     public void run() {
                         if (!player.isOnline()) return;
+                        if (Reflections.isGliding(e.getPlayer())) return;
                         if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
                             return; // if the player teleported recently, cancel it
                         if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
@@ -232,6 +233,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     @Override
                     public void run() {
                         if (!player.isOnline()) return;
+                        if (Reflections.isGliding(e.getPlayer())) return;
                         if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
                             return; // if the player teleported recently, cancel it
                         double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
