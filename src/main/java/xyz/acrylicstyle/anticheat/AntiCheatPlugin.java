@@ -1,16 +1,14 @@
 package xyz.acrylicstyle.anticheat;
 
 import org.bukkit.*;
-import org.bukkit.block.Block;
-import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
@@ -28,15 +26,15 @@ import xyz.acrylicstyle.anticheat.commands.Check;
 import xyz.acrylicstyle.anticheat.commands.Reload;
 import xyz.acrylicstyle.anticheat.commands.SetConfig;
 import xyz.acrylicstyle.anticheat.commands.Version;
-import xyz.acrylicstyle.tomeito_core.providers.ConfigProvider;
-import xyz.acrylicstyle.tomeito_core.utils.Log;
+import xyz.acrylicstyle.tomeito_api.providers.ConfigProvider;
+import xyz.acrylicstyle.tomeito_api.utils.Log;
 
-import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
+    public static final String PREFIX = ChatColor.GOLD + "[AC] ";
     private static AntiCheatPlugin instance = null;
     public static Collection<UUID, AtomicInteger> moves = new Collection<>();
     private AntiCheatConfiguration config = null;
@@ -52,14 +50,8 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     public void onEnable() {
         this.saveResource("version.yml", true);
         this.saveResource("config.yml", false);
-        try {
-            config = new AntiCheatConfigurationImpl("./plugins/AntiCheat/config.yml");
-            version = new ConfigProvider("./plugins/AntiCheat/version.yml");
-        } catch (IOException | InvalidConfigurationException e) {
-            Log.error("An error occurred while loading config!");
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+        config = new AntiCheatConfigurationImpl("./plugins/AntiCheat/config.yml");
+        version = new ConfigProvider("./plugins/AntiCheat/version.yml");
         bindings.addCommand("set", new SetConfig());
         bindings.addCommand("reload", new Reload());
         bindings.addCommand("version", new Version());
@@ -116,13 +108,27 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         //</editor-fold>
     }*/
 
+    public static Collection<UUID, Integer> maxCps = new Collection<>();
     public static Collection<UUID, AtomicInteger> cps = new Collection<>();
+
+    private boolean log(String player, String reason, String value) {
+        if (config.kickPlayer()) {
+            sendMessageToAllOperators(PREFIX + ChatColor.RED + "Kicking player " + player + " for " + reason + " " + value);
+            Log.info(PREFIX + ChatColor.RED + "Kicking player " + player + " for " + reason + " " + value);
+        } else {
+            sendMessageToAllOperators(PREFIX + ChatColor.RED + player + " is possible " + reason + " " + value);
+            Log.info(PREFIX + ChatColor.RED + player + " is possible " + reason + " " + value);
+        }
+        return config.kickPlayer();
+    }
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
-        //<editor-fold desc="Clickbot" defaultstate="collapsed">
-        cps.putIfAbsent(e.getPlayer().getUniqueId(), new AtomicInteger());
+        //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
+        if (!cps.containsKey(e.getPlayer().getUniqueId())) cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
+        if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
         int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
+        if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps) maxCps.put(e.getPlayer().getUniqueId(), currentCps);
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -130,14 +136,35 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
             }
         }.runTaskLater(this, 20);
         if (currentCps >= config.getClicksThreshold()) {
-            sendMessageToAllOperators(ChatColor.RED + "Kicking player " + e.getPlayer().getName() + " for clicking too fast! (" + currentCps + " cps)");
-            Log.debug("Kicking player " + e.getPlayer().getName() + " for clicking too fast! (" + currentCps + " cps)");
-            e.getPlayer().kickPlayer("You are sending too many packets!");
+            if (log(e.getPlayer().getName(), "clicking too fast", "(" + currentCps + " cps)"))
+                e.getPlayer().kickPlayer("You are sending too many packets!");
         }
         //</editor-fold>
     }
 
-    @EventHandler
+    public static CollectionList<UUID> teleportedRecently = new CollectionList<>();
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onPlayerTeleport(PlayerTeleportEvent e) {
+        teleportedRecently.add(e.getPlayer().getUniqueId());
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                teleportedRecently.remove(e.getPlayer().getUniqueId());
+            }
+        }.runTaskLater(this, 30);
+    }
+
+    private void kickPlayer(Player player, String reason) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                player.kickPlayer(reason);
+            }
+        }.runTask(this);
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerMove(PlayerMoveEvent e) {
         Player player = e.getPlayer();
         Location from = e.getFrom();
@@ -154,9 +181,9 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
             }
         }.runTaskLater(this, 20);
         if (move != -1 && config.getBlinkPacketsThreshold() < move) {
-            sendMessageToAllOperators(ChatColor.RED + "Kicked " + e.getPlayer().getName() + " for sending too many move packets. (" + move + " packets/s)");
-            Log.warn("Kicking player " + e.getPlayer().getName() + " for sending too many move packets! (" + move + " packets/s)");
-            e.getPlayer().kickPlayer("You are sending too many packets!");
+            if (log(e.getPlayer().getName(), "sending too many move packets", "(" + move + " packets/s)")) {
+                e.getPlayer().kickPlayer("You are sending too many packets!");
+            }
             return;
         }
         //</editor-fold>
@@ -169,13 +196,14 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                 @Override
                 public void run() {
                     if (!player.isOnline()) return;
-                    if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold()) {
-                        sendMessageToAllOperators(ChatColor.RED + "Kicked " + e.getPlayer().getName() + " for flying (" + (player.getLocation().getY() - y) + " blocks/s)");
-                        Log.warn("Kicking player " + e.getPlayer().getName() + " for flying (" + (player.getLocation().getY() - y) + " blocks/s)");
-                        e.getPlayer().kickPlayer("Flying is not enabled on this server");
+                    if (teleportedRecently.contains(e.getPlayer().getUniqueId())) return; // if the player teleported recently, cancel it
+                    if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
+                        if (log(e.getPlayer().getName(), "flying", "(" + (player.getLocation().getY() - y) + " blocks/s)")) {
+                            kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
+                        }
                     }
                 }
-            }.runTaskLater(this, 20);
+            }.runTaskLaterAsynchronously(this, 20);
         }
         //</editor-fold>
         //<editor-fold desc="Fly & Speed Detection" defaultstate="collapsed">
@@ -190,12 +218,12 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     if (!player.isOnline()) return;
                     double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
                     if (overall >= config.getSpeedThreshold()) {
-                        sendMessageToAllOperators(ChatColor.RED + "Kicked " + e.getPlayer().getName() + " for possible speed/fly hacking (" + overall + " blocks/s)");
-                        Log.warn("Kicking player " + e.getPlayer().getName() + " for possible speed/fly hacking (" + overall + " blocks/s)");
-                        e.getPlayer().kickPlayer("You are sending too many packets!");
+                        if (log(e.getPlayer().getName(), "speed/fly", "(" + overall + " blocks/s)")) {
+                            kickPlayer(e.getPlayer(), "You are sending too many packets!");
+                        }
                     }
                 }
-            }.runTaskLater(this, 20);
+            }.runTaskLaterAsynchronously(this, 20);
         }
         //</editor-fold>
     }
@@ -219,7 +247,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     public static AntiCheatPlugin getInstance() { return instance; }
 
     @Override
-    public int getPlayerMoves(UUID uuid) throws NullPointerException {
+    public int getPlayerMoves(@NotNull UUID uuid) throws NullPointerException {
         AtomicInteger atomicInteger = moves.get(uuid);
         if (atomicInteger == null) throw new NullPointerException();
         return atomicInteger.get();
@@ -236,14 +264,14 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     }
 
     @Override
-    public int getPlayerClicks(UUID uuid) throws NullPointerException {
+    public int getPlayerClicks(@NotNull UUID uuid) throws NullPointerException {
         AtomicInteger atomicInteger = cps.get(uuid);
         if (atomicInteger == null) throw new NullPointerException();
         return atomicInteger.get();
     }
 
     @Override
-    public AntiCheatConfiguration getConfiguration() throws NullPointerException {
+    public @NotNull AntiCheatConfiguration getConfiguration() throws NullPointerException {
         if (config == null) throw new NullPointerException("Configuration is null! (Perhaps configuration has set to null?)");
         return config;
     }

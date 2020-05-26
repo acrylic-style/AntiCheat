@@ -7,3 +7,5 @@ blinkPacketsThreshold: 40
 flyVerticalThreshold: 12
 clicksThreshold: 38
 speedThreshold: 30
+
+kickPlayer: false

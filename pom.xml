@@ -6,7 +6,7 @@
 
     <groupId>xyz.acrylicstyle</groupId>
     <artifactId>AntiCheat</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <build>
         <plugins>
             <plugin>
@@ -61,8 +61,8 @@
         </dependency>
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
-            <artifactId>tomeito_lib</artifactId>
-            <version>0.1.22</version>
+            <artifactId>api</artifactId>
+            <version>0.4.8</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -74,7 +74,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>AntiCheatAPI</artifactId>
-            <version>0.0.1</version>
+            <version>0.0.3</version>
         </dependency>
     </dependencies>
 </project>

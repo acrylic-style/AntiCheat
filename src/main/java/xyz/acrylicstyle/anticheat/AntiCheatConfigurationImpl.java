@@ -1,13 +1,20 @@
 package xyz.acrylicstyle.anticheat;
 
-import org.bukkit.configuration.InvalidConfigurationException;
 import xyz.acrylicstyle.anticheat.api.AntiCheatConfiguration;
 
-import java.io.IOException;
-
 public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
-    public AntiCheatConfigurationImpl(String path) throws IOException, InvalidConfigurationException {
+    public AntiCheatConfigurationImpl(String path) {
         super(path);
+    }
+
+    @Override
+    public boolean kickPlayer() {
+        return this.getBoolean("kickPlayer", false);
+    }
+
+    @Override
+    public void setKickPlayer(boolean flag) {
+        this.set("kickPlayer", flag);
     }
 
     @Override

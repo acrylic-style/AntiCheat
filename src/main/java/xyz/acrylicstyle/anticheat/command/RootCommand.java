@@ -6,11 +6,11 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import util.Collection;
 import util.CollectionList;
 import util.ICollectionList;
-import util.StringCollection;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
-import xyz.acrylicstyle.anticheat.api.command.CustomCommand;
+import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
 
 public class RootCommand implements CommandExecutor {
     @Override
@@ -27,7 +27,9 @@ public class RootCommand implements CommandExecutor {
             $sendMessage(sender);
             return true;
         }
-        StringCollection<CustomCommand> commands = AntiCheatPlugin.bindings.filterKeys(cmd -> cmd.equals(args[0]));
+        Collection<String, PlayerCommandExecutor> commands = AntiCheatPlugin.bindings
+                .filterKeys(cmd -> cmd.equals(args[0]))
+                .mapValues((k, v) -> (PlayerCommandExecutor) v);
         if (commands.size() == 0) {
             $sendMessage(sender);
             return true;
@@ -50,7 +52,7 @@ public class RootCommand implements CommandExecutor {
     public void $sendMessage(CommandSender sender) {
         sender.sendMessage(ChatColor.GOLD + "-----------------------------------");
         sender.sendMessage(getCommandHelp("/ac check <Player>", "Check player's status."));
-        sender.sendMessage(getCommandHelp("/ac set <key> <value>", "Set config."));
+        sender.sendMessage(getCommandHelp("/ac set <key> <value>", "Set config value."));
         sender.sendMessage(getCommandHelp("/ac reload", "Reloads config."));
         sender.sendMessage(getCommandHelp("/ac version", "Shows AntiCheat plugin's version."));
         sender.sendMessage(ChatColor.GOLD + "-----------------------------------");

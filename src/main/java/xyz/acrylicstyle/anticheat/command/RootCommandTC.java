@@ -6,26 +6,37 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import util.CollectionList;
+import util.ICollectionList;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static xyz.acrylicstyle.tomeito_api.utils.TabCompleterHelper.filterArgsList;
 
 public class RootCommandTC implements TabCompleter {
     @Override
-    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         List<String> emptyList = new ArrayList<>();
         if (args.length == 0) return AntiCheatPlugin.bindings.getCommands().keysList();
         if (args.length == 1) return filterArgsList(AntiCheatPlugin.bindings.getCommands().keysList(), args[0]);
         if (args.length == 2) {
             if (args[0].equals("check")) return filterArgsList(new CollectionList<>(Bukkit.getOnlinePlayers()).map(Player::getName), args[1]);
+            if (args[0].equals("set")) {
+                CollectionList<String> list = ICollectionList.asList(args[0].split("\\."));
+                String prefix = "";
+                if (list.size() > 0) list.shift();
+                if (list.size() > 0) {
+                    list.shift();
+                    prefix = list.join(".");
+                }
+                Map<String, Object> map = AntiCheatPlugin.getInstance().getConfiguration().getConfigSectionValue(prefix, false);
+                if (map == null) return new ArrayList<>();
+                return filterArgsList(new ArrayList<>(map.keySet()), args[1]).map(s -> (list.size() != 0 ? list.join(".") + "." : "") + s);
+            }
         }
         return emptyList;
-    }
-
-    private CollectionList<String> filterArgsList(CollectionList<String> list, String s) {
-        return list.filter(s2 -> s2.toLowerCase().replaceAll(".*:(.*)", "$1").startsWith(s.toLowerCase().replaceAll(".*:(.*)", "$1")));
     }
 }
