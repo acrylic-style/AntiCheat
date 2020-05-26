@@ -224,7 +224,8 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     && !player.getAllowFlight()
                     && player.getWalkSpeed() <= 0.3
                     && player.getGameMode() != GameMode.CREATIVE
-                    && player.getGameMode() != GameMode.SPECTATOR) {
+                    && player.getGameMode() != GameMode.SPECTATOR
+                    && !Reflections.isGliding(e.getPlayer())) {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
