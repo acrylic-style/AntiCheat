@@ -229,6 +229,8 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                     @Override
                     public void run() {
                         if (!player.isOnline()) return;
+                        if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
+                            return; // if the player teleported recently, cancel it
                         double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
                         if (overall >= config.getSpeedThreshold()) {
                             if (log(e.getPlayer().getName(), "speed/fly", "(" + overall + " blocks/s)")) {
