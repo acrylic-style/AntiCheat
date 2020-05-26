@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -126,6 +127,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     public void onPlayerInteract(PlayerInteractEvent e) {
         //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
         if (config.detectClickBot()) {
+            if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
             EquipmentSlot slot = Reflections.getHand(e);
             if (slot != null && slot != EquipmentSlot.HAND) return;
             if (!cps.containsKey(e.getPlayer().getUniqueId()))
