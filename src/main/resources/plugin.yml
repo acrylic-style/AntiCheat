@@ -6,3 +6,7 @@ depend:
 commands:
   ac:
     aliases: ["anticheat"]
+permissions:
+  anticheat.bypass:
+    description: "Bypasses anti-cheat checks or not"
+    default: op

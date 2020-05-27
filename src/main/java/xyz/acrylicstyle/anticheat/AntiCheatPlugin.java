@@ -129,7 +129,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
         //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
-        if (config.detectClickBot()) {
+        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectClickBot()) {
             if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
             EquipmentSlot slot = Reflections.getHand(e);
             if (slot != null && slot != EquipmentSlot.HAND) return;
@@ -191,7 +191,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                 moves.get(e.getPlayer().getUniqueId()).decrementAndGet();
             }
         }.runTaskLater(this, 20);
-        if (config.detectBlink()) {
+        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectBlink()) {
             if (move != -1 && config.getBlinkPacketsThreshold() < move) {
                 if (log(e.getPlayer().getName(), "sending too many move packets", "(" + move + " packets/s)")) {
                     e.getPlayer().kickPlayer("You are sending too many packets!");
@@ -201,7 +201,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }
         //</editor-fold>
         //<editor-fold desc="Fly Detection (Partial, only works when player is going up)" defaultstate="collapsed">
-        if (config.detectFly()) {
+        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectFly()) {
             if (!player.hasPotionEffect(PotionEffectType.JUMP)
                     && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
                     && player.getGameMode() != GameMode.CREATIVE
@@ -226,7 +226,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }
         //</editor-fold>
         //<editor-fold desc="Fly & Speed Detection" defaultstate="collapsed">
-        if (config.detectSpeed()) {
+        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectSpeed()) {
             if (!player.hasPotionEffect(PotionEffectType.SPEED)
                     && !player.getAllowFlight()
                     && player.getWalkSpeed() <= 0.3
