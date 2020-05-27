@@ -65,6 +65,16 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         Bukkit.getPluginManager().registerEvents(this, this);
         Bukkit.getServicesManager().register(AntiCheat.class, this, this, ServicePriority.Normal);
         for (Player player : Bukkit.getOnlinePlayers()) onPlayerJoin(new PlayerJoinEvent(player, ""));
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                messages.clone().forEach((uuid, string) -> {
+                    sendMessageToAllOperators(string);
+                    Log.info(string);
+                });
+                messages.clear();
+            }
+        }.runTaskTimer(this, 20, 20);
     }
 
     @EventHandler
@@ -114,14 +124,14 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
 
     public static Collection<UUID, Integer> maxCps = new Collection<>();
     public static Collection<UUID, AtomicInteger> cps = new Collection<>();
+    public static Collection<UUID, String> messages = new Collection<>();
 
-    private boolean log(String player, String reason, String value) {
+    private boolean log(Player player, String reason, String value) {
         if (config.kickPlayer()) {
-            sendMessageToAllOperators(PREFIX + ChatColor.RED + "Kicking player " + player + " for " + reason + " " + value);
-            Log.info(PREFIX + ChatColor.RED + "Kicking player " + player + " for " + reason + " " + value);
+            sendMessageToAllOperators(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
+            Log.info(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
         } else {
-            sendMessageToAllOperators(PREFIX + ChatColor.RED + player + " is possible " + reason + " " + value);
-            Log.info(PREFIX + ChatColor.RED + player + " is possible " + reason + " " + value);
+            messages.add(player.getUniqueId(), PREFIX + ChatColor.RED + player.getName() + " is possible " + reason + " " + value);
         }
         return config.kickPlayer();
     }
@@ -146,7 +156,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                 }
             }.runTaskLater(this, 20);
             if (currentCps >= config.getClicksThreshold()) {
-                if (log(e.getPlayer().getName(), "clicking too fast", "(" + currentCps + " cps)"))
+                if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
                     e.getPlayer().kickPlayer("You are sending too many packets!");
             }
         }
@@ -193,7 +203,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }.runTaskLater(this, 20);
         if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectBlink()) {
             if (move != -1 && config.getBlinkPacketsThreshold() < move) {
-                if (log(e.getPlayer().getName(), "sending too many move packets", "(" + move + " packets/s)")) {
+                if (log(e.getPlayer(), "sending too many move packets", "(" + move + " packets/s)")) {
                     e.getPlayer().kickPlayer("You are sending too many packets!");
                 }
                 return;
@@ -216,7 +226,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                         if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
                             return; // if the player teleported recently, cancel it
                         if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
-                            if (log(e.getPlayer().getName(), "flying", "(" + (player.getLocation().getY() - y) + " blocks/s)")) {
+                            if (log(e.getPlayer(), "flying", "(" + (player.getLocation().getY() - y) + " blocks/s)")) {
                                 kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
                             }
                         }
@@ -243,7 +253,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                             return; // if the player teleported recently, cancel it
                         double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
                         if (overall >= config.getSpeedThreshold()) {
-                            if (log(e.getPlayer().getName(), "speed/fly", "(" + overall + " blocks/s)")) {
+                            if (log(e.getPlayer(), "speed/fly", "(" + overall + " blocks/s)")) {
                                 kickPlayer(e.getPlayer(), "You are sending too many packets!");
                             }
                         }
