@@ -131,6 +131,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
             sendMessageToAllOperators(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
             Log.info(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
         } else {
+            messages.remove(player.getUniqueId());
             messages.add(player.getUniqueId(), PREFIX + ChatColor.RED + player.getName() + " is possible " + reason + " " + value);
         }
         return config.kickPlayer();
