@@ -21,6 +21,7 @@ public class RootCommandTC implements TabCompleter {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
         List<String> emptyList = new ArrayList<>();
+        if (!sender.isOp()) return emptyList;
         if (args.length == 0) return AntiCheatPlugin.bindings.getCommands().keysList();
         if (args.length == 1) return filterArgsList(AntiCheatPlugin.bindings.getCommands().keysList(), args[0]);
         if (args.length == 2) {
