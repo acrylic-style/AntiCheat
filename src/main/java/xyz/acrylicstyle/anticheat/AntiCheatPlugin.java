@@ -188,6 +188,10 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }.runTask(this);
     }
 
+    public static double round(double d) {
+        return Math.round(d*10D)/10D;
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerMove(PlayerMoveEvent e) {
         Player player = e.getPlayer();
@@ -231,7 +235,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                         if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
                             return; // if the player teleported recently, cancel it
                         if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
-                            if (log(e.getPlayer(), "flying", "(" + (player.getLocation().getY() - y) + " blocks/s)")) {
+                            if (log(e.getPlayer(), "flying", "(" + round(player.getLocation().getY() - y) + " blocks/s)")) {
                                 kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
                             }
                         }
@@ -258,7 +262,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                             return; // if the player teleported recently, cancel it
                         double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
                         if (overall >= config.getSpeedThreshold()) {
-                            if (log(e.getPlayer(), "speed/fly", "(" + overall + " blocks/s)")) {
+                            if (log(e.getPlayer(), "speed/fly", "(" + round(overall) + " blocks/s)")) {
                                 kickPlayer(e.getPlayer(), "You are sending too many packets!");
                             }
                         }
