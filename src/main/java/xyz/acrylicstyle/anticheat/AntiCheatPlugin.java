@@ -139,6 +139,8 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
+        if (e.getPlayer().hasPermission("anticheat.bypass")
+                || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
         //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
         if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectClickBot()) {
             if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
@@ -194,7 +196,6 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         double x = to == null ? from.getX() : to.getX();
         double y = to == null ? from.getY() : to.getY();
         double z = to == null ? from.getZ() : to.getZ();
-        //<editor-fold desc="Blink Detection" defaultstate="collapsed">
         int move = moves.get(e.getPlayer().getUniqueId()).incrementAndGet();
         new BukkitRunnable() {
             @Override
@@ -202,7 +203,10 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                 moves.get(e.getPlayer().getUniqueId()).decrementAndGet();
             }
         }.runTaskLater(this, 20);
-        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectBlink()) {
+        if (e.getPlayer().hasPermission("anticheat.bypass")
+                || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
+        //<editor-fold desc="Blink Detection" defaultstate="collapsed">
+        if (config.detectBlink()) {
             if (move != -1 && config.getBlinkPacketsThreshold() < move) {
                 if (log(e.getPlayer(), "sending too many move packets", "(" + move + " packets/s)")) {
                     e.getPlayer().kickPlayer("You are sending too many packets!");
@@ -212,7 +216,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }
         //</editor-fold>
         //<editor-fold desc="Fly Detection (Partial, only works when player is going up)" defaultstate="collapsed">
-        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectFly()) {
+        if (config.detectFly()) {
             if (!player.hasPotionEffect(PotionEffectType.JUMP)
                     && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
                     && player.getGameMode() != GameMode.CREATIVE
@@ -237,7 +241,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }
         //</editor-fold>
         //<editor-fold desc="Fly & Speed Detection" defaultstate="collapsed">
-        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectSpeed()) {
+        if (config.detectSpeed()) {
             if (!player.hasPotionEffect(PotionEffectType.SPEED)
                     && !player.getAllowFlight()
                     && player.getWalkSpeed() <= 0.3
