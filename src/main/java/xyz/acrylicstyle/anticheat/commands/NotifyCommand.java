@@ -10,10 +10,10 @@ public class NotifyCommand extends PlayerCommandExecutor {
     public void onCommand(Player player, String[] args) {
         if (AntiCheatPlugin.notifyOff.contains(player.getUniqueId())) {
             AntiCheatPlugin.notifyOff.remove(player.getUniqueId());
-            player.sendMessage(ChatColor.GREEN + "Turned off notification.");
+            player.sendMessage(ChatColor.GREEN + "Turned on notification.");
         } else {
             AntiCheatPlugin.notifyOff.add(player.getUniqueId());
-            player.sendMessage(ChatColor.GREEN + "Turned on notification.");
+            player.sendMessage(ChatColor.GREEN + "Turned off notification.");
         }
     }
 }
