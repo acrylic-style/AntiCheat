@@ -139,31 +139,36 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent e) {
-        if (e.getPlayer().hasPermission("anticheat.bypass")
-                || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
-        //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
-        if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectClickBot()) {
-            if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
-            EquipmentSlot slot = Reflections.getHand(e);
-            if (slot != null && slot != EquipmentSlot.HAND) return;
-            if (!cps.containsKey(e.getPlayer().getUniqueId()))
-                cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
-            if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
-            int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
-            if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
-                maxCps.put(e.getPlayer().getUniqueId(), currentCps);
-            new BukkitRunnable() {
-                @Override
-                public void run() {
-                    cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (e.getPlayer().hasPermission("anticheat.bypass")
+                        || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
+                //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
+                if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectClickBot()) {
+                    if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
+                    EquipmentSlot slot = Reflections.getHand(e);
+                    if (slot != null && slot != EquipmentSlot.HAND) return;
+                    if (!cps.containsKey(e.getPlayer().getUniqueId()))
+                        cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
+                    if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
+                    int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
+                    if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
+                        maxCps.put(e.getPlayer().getUniqueId(), currentCps);
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
+                        }
+                    }.runTaskLater(AntiCheatPlugin.this, 20);
+                    if (currentCps >= config.getClicksThreshold()) {
+                        if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
+                            e.getPlayer().kickPlayer("You are sending too many packets!");
+                    }
                 }
-            }.runTaskLater(this, 20);
-            if (currentCps >= config.getClicksThreshold()) {
-                if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
-                    e.getPlayer().kickPlayer("You are sending too many packets!");
+                //</editor-fold>
             }
-        }
-        //</editor-fold>
+        }.runTaskAsynchronously(this);
     }
 
     public static CollectionList<UUID> teleportedRecently = new CollectionList<>();
@@ -194,83 +199,85 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerMove(PlayerMoveEvent e) {
-        Player player = e.getPlayer();
-        Location from = e.getFrom();
-        Location to = e.getTo();
-        double x = to == null ? from.getX() : to.getX();
-        double y = to == null ? from.getY() : to.getY();
-        double z = to == null ? from.getZ() : to.getZ();
-        int move = moves.get(e.getPlayer().getUniqueId()).incrementAndGet();
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                moves.get(e.getPlayer().getUniqueId()).decrementAndGet();
-            }
-        }.runTaskLater(this, 20);
-        if (e.getPlayer().hasPermission("anticheat.bypass")
-                || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
-        //<editor-fold desc="Blink Detection" defaultstate="collapsed">
-        if (config.detectBlink()) {
-            if (move != -1 && config.getBlinkPacketsThreshold() < move) {
-                if (log(e.getPlayer(), "sending too many move packets", "(" + move + " packets/s)")) {
-                    e.getPlayer().kickPlayer("You are sending too many packets!");
+        new Thread(() -> {
+            Player player = e.getPlayer();
+            Location from = e.getFrom();
+            Location to = e.getTo();
+            double x = to == null ? from.getX() : to.getX();
+            double y = to == null ? from.getY() : to.getY();
+            double z = to == null ? from.getZ() : to.getZ();
+            int move = moves.get(e.getPlayer().getUniqueId()).incrementAndGet();
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    moves.get(e.getPlayer().getUniqueId()).decrementAndGet();
                 }
-                return;
+            }.runTaskLaterAsynchronously(this, 20);
+            if (e.getPlayer().hasPermission("anticheat.bypass")
+                    || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
+            //<editor-fold desc="Blink Detection" defaultstate="collapsed">
+            if (config.detectBlink()) {
+                if (move != -1 && config.getBlinkPacketsThreshold() < move) {
+                    if (log(e.getPlayer(), "sending too many move packets", "(" + move + " packets/s)")) {
+                        kickPlayer(e.getPlayer(), "You are sending too many packets!");
+                    }
+                    return;
+                }
             }
-        }
-        //</editor-fold>
-        //<editor-fold desc="Fly Detection (Partial, only works when player is going up)" defaultstate="collapsed">
-        if (config.detectFly()) {
-            if (!player.hasPotionEffect(PotionEffectType.JUMP)
-                    && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
-                    && player.getGameMode() != GameMode.CREATIVE
-                    && player.getGameMode() != GameMode.SPECTATOR
-                    && !Reflections.isGliding(e.getPlayer())) {
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        if (!player.isOnline()) return;
-                        if (Reflections.isGliding(e.getPlayer())) return;
-                        if (e.getPlayer().isFlying()) return;
-                        if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
-                            return; // if the player teleported recently, cancel it
-                        if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
-                            if (log(e.getPlayer(), "flying", "(" + round(player.getLocation().getY() - y) + " blocks/s)")) {
-                                kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
+            //</editor-fold>
+            //<editor-fold desc="Fly Detection (Partial, only works when player is going up)" defaultstate="collapsed">
+            if (config.detectFly()) {
+                if (!player.hasPotionEffect(PotionEffectType.JUMP)
+                        && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
+                        && player.getGameMode() != GameMode.CREATIVE
+                        && player.getGameMode() != GameMode.SPECTATOR
+                        && !Reflections.isGliding(e.getPlayer())) {
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (!player.isOnline()) return;
+                            if (Reflections.isGliding(e.getPlayer())) return;
+                            if (e.getPlayer().isFlying()) return;
+                            if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
+                                return; // if the player teleported recently, cancel it
+                            if ((player.getLocation().getY() - y) >= config.getFlyVerticalThreshold() && (player.getLocation().getY() - y) < 100) {
+                                if (log(e.getPlayer(), "flying", "(" + round(player.getLocation().getY() - y) + " blocks/s)")) {
+                                    kickPlayer(e.getPlayer(), "Flying is not enabled on this server");
+                                }
                             }
                         }
-                    }
-                }.runTaskLater(this, 20);
+                    }.runTaskLater(this, 20);
+                }
             }
-        }
-        //</editor-fold>
-        //<editor-fold desc="Fly & Speed Detection" defaultstate="collapsed">
-        if (config.detectSpeed()) {
-            if (!player.hasPotionEffect(PotionEffectType.SPEED)
-                    && !player.getAllowFlight()
-                    && player.getWalkSpeed() <= 0.3
-                    && player.getGameMode() != GameMode.CREATIVE
-                    && player.getGameMode() != GameMode.SPECTATOR
-                    && !Reflections.isGliding(e.getPlayer())) {
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        if (!player.isOnline()) return;
-                        if (Reflections.isGliding(e.getPlayer())) return;
-                        if (e.getPlayer().isFlying()) return;
-                        if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
-                            return; // if the player teleported recently, cancel it
-                        double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
-                        if (overall >= config.getSpeedThreshold()) {
-                            if (log(e.getPlayer(), "speed/fly", "(" + round(overall) + " blocks/s)")) {
-                                kickPlayer(e.getPlayer(), "You are sending too many packets!");
+            //</editor-fold>
+            //<editor-fold desc="Fly & Speed Detection" defaultstate="collapsed">
+            if (config.detectSpeed()) {
+                if (!player.hasPotionEffect(PotionEffectType.SPEED)
+                        && !player.getAllowFlight()
+                        && player.getWalkSpeed() <= 0.3
+                        && player.getGameMode() != GameMode.CREATIVE
+                        && player.getGameMode() != GameMode.SPECTATOR
+                        && !Reflections.isGliding(e.getPlayer())) {
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            if (!player.isOnline()) return;
+                            if (Reflections.isGliding(e.getPlayer())) return;
+                            if (e.getPlayer().isFlying()) return;
+                            if (teleportedRecently.contains(e.getPlayer().getUniqueId()))
+                                return; // if the player teleported recently, cancel it
+                            double overall = negativeToPositive(player.getLocation().getX() - x) + negativeToPositive(player.getLocation().getZ() - z);
+                            if (overall >= config.getSpeedThreshold()) {
+                                if (log(e.getPlayer(), "speed/fly", "(" + round(overall) + " blocks/s)")) {
+                                    kickPlayer(e.getPlayer(), "You are sending too many packets!");
+                                }
                             }
                         }
-                    }
-                }.runTaskLater(this, 20);
+                    }.runTaskLater(this, 20);
+                }
             }
-        }
-        //</editor-fold>
+            //</editor-fold>
+        }).start();
     }
 
     public double negativeToPositive(double i) {
