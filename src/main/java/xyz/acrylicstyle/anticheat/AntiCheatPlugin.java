@@ -77,6 +77,11 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         }.runTaskTimer(this, 20, 20);
     }
 
+    @Override
+    public void onDisable() {
+        config.save();
+    }
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent e) {
         moves.add(e.getPlayer().getUniqueId(), new AtomicInteger());
