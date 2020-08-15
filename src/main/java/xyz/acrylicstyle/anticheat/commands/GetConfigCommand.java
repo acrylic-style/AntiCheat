@@ -4,7 +4,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
-import xyz.acrylicstyle.tomeito_api.utils.Log;
 
 public class GetConfigCommand extends PlayerCommandExecutor {
     @Override

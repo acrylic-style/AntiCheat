@@ -16,7 +16,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import util.Collection;
 import util.CollectionList;
 import xyz.acrylicstyle.anticheat.api.AntiCheat;
@@ -39,8 +38,8 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     public static Collection<UUID, AtomicInteger> moves = new Collection<>();
     private AntiCheatConfiguration config = null;
     public static CommandBindings bindings = new CommandBindings();
-    public static ConfigProvider version = null;
     public static CollectionList<UUID> notifyOff = new CollectionList<>();
+    private Throwable loadError = null;
 
     @Override
     public void onLoad() {
@@ -49,32 +48,36 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
 
     @Override
     public void onEnable() {
-        this.saveResource("version.yml", true);
-        this.saveResource("config.yml", false);
-        config = new AntiCheatConfigurationImpl("./plugins/AntiCheat/config.yml");
-        version = new ConfigProvider("./plugins/AntiCheat/version.yml");
-        bindings.addCommand("set", new SetConfigCommand());
-        bindings.addCommand("reload", new ReloadCommand());
-        bindings.addCommand("version", new VersionCommand());
-        bindings.addCommand("check", new CheckCommand());
-        bindings.addCommand("get", new GetConfigCommand());
-        bindings.addCommand("notify", new NotifyCommand());
-        bindings.addCommand("bypass", new BypassCommand());
-        Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setExecutor(new RootCommand());
-        Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setTabCompleter(new RootCommandTC());
-        Bukkit.getPluginManager().registerEvents(this, this);
-        Bukkit.getServicesManager().register(AntiCheat.class, this, this, ServicePriority.Normal);
-        for (Player player : Bukkit.getOnlinePlayers()) onPlayerJoin(new PlayerJoinEvent(player, ""));
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                messages.clone().forEach((uuid, string) -> {
-                    sendMessageToAllOperators(string);
-                    Log.info(string);
-                });
-                messages.clear();
-            }
-        }.runTaskTimer(this, 20, 20);
+        try {
+            this.saveResource("version.yml", true);
+            this.saveResource("config.yml", false);
+            config = new AntiCheatConfigurationImpl("./plugins/AntiCheat/config.yml");
+            bindings.addCommand("set", new SetConfigCommand());
+            bindings.addCommand("reload", new ReloadCommand());
+            bindings.addCommand("version", new VersionCommand());
+            bindings.addCommand("check", new CheckCommand());
+            bindings.addCommand("get", new GetConfigCommand());
+            bindings.addCommand("notify", new NotifyCommand());
+            bindings.addCommand("bypass", new BypassCommand());
+            Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setExecutor(new RootCommand());
+            Objects.requireNonNull(Bukkit.getPluginCommand("ac")).setTabCompleter(new RootCommandTC());
+            Bukkit.getPluginManager().registerEvents(this, this);
+            Bukkit.getServicesManager().register(AntiCheat.class, this, this, ServicePriority.Normal);
+            for (Player player : Bukkit.getOnlinePlayers()) onPlayerJoin(new PlayerJoinEvent(player, ""));
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    messages.clone().forEach((uuid, string) -> {
+                        sendMessageToAllOperators(string);
+                        Log.info(string);
+                    });
+                    messages.clear();
+                }
+            }.runTaskTimer(this, 20, 20);
+        } catch (Throwable throwable) {
+            loadError = throwable;
+            throw throwable;
+        }
     }
 
     @Override
@@ -137,7 +140,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
             Log.info(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
         } else {
             messages.remove(player.getUniqueId());
-            messages.add(player.getUniqueId(), PREFIX + ChatColor.RED + player.getName() + " is possible " + reason + " " + value);
+            messages.add(player.getUniqueId(), PREFIX + ChatColor.RED + player.getName() + " is possibly " + reason + " " + value);
         }
         return config.kickPlayer();
     }
@@ -149,7 +152,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
             public void run() {
                 if (e.getPlayer().hasPermission("anticheat.bypass")
                         || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
-                //<editor-fold desc="Clickbot detection" defaultstate="collapsed">
+                //<editor-fold desc="ClickBot detection" defaultstate="collapsed">
                 if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectClickBot()) {
                     if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
                     EquipmentSlot slot = Reflections.getHand(e);
@@ -165,7 +168,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                         public void run() {
                             cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
                         }
-                    }.runTaskLater(AntiCheatPlugin.this, 20);
+                    }.runTaskLaterAsynchronously(AntiCheatPlugin.this, 20);
                     if (currentCps >= config.getClicksThreshold()) {
                         if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
                             e.getPlayer().kickPlayer("You are sending too many packets!");
@@ -205,6 +208,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerMove(PlayerMoveEvent e) {
         new Thread(() -> {
+            if (config.isDisableMovementCheck()) return;
             Player player = e.getPlayer();
             Location from = e.getFrom();
             Location to = e.getTo();
@@ -230,7 +234,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
                 }
             }
             //</editor-fold>
-            //<editor-fold desc="Fly Detection (Partial, only works when player is going up)" defaultstate="collapsed">
+            //<editor-fold desc="Fly (vertical) Detection" defaultstate="collapsed">
             if (config.detectFly()) {
                 if (!player.hasPotionEffect(PotionEffectType.JUMP)
                         && (!player.getAllowFlight() && player.getFlySpeed() <= 0.2)
@@ -316,20 +320,23 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     }
 
     @Override
-    public @Nullable ConfigProvider getVersionInfo() {
-        return version;
+    public @NotNull ConfigProvider getVersionInfo() {
+        throw new UnsupportedOperationException("version.yml was removed from the plugin");
     }
 
     @Override
-    public int getPlayerClicks(@NotNull UUID uuid) throws NullPointerException {
+    public int getPlayerClicks(@NotNull UUID uuid) {
         AtomicInteger atomicInteger = cps.get(uuid);
-        if (atomicInteger == null) throw new NullPointerException();
+        if (atomicInteger == null) return 0;
         return atomicInteger.get();
     }
 
     @Override
     public @NotNull AntiCheatConfiguration getConfiguration() throws NullPointerException {
-        if (config == null) throw new NullPointerException("Configuration is null! (Perhaps configuration has set to null?)");
+        if (config == null) {
+            if (loadError != null) throw new RuntimeException("There was an error while enabling plugin and config is null", loadError);
+            throw new NullPointerException("Configuration is null! (maybe config was set to null?)");
+        }
         return config;
     }
 }

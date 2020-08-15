@@ -1,6 +1,6 @@
 name: AntiCheat
 main: xyz.acrylicstyle.anticheat.AntiCheatPlugin
-version: 0.0.2
+version: 0.0.3
 depend:
   - TomeitoLib
 commands:

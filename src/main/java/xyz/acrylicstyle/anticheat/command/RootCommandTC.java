@@ -12,6 +12,7 @@ import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -20,7 +21,7 @@ import static xyz.acrylicstyle.tomeito_api.utils.TabCompleterHelper.filterArgsLi
 public class RootCommandTC implements TabCompleter {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String alias, @NotNull String[] args) {
-        List<String> emptyList = new ArrayList<>();
+        List<String> emptyList = Collections.emptyList();
         if (!sender.isOp()) return emptyList;
         if (args.length == 0) return AntiCheatPlugin.bindings.getCommands().keysList();
         if (args.length == 1) return filterArgsList(AntiCheatPlugin.bindings.getCommands().keysList(), args[0]);
@@ -35,7 +36,7 @@ public class RootCommandTC implements TabCompleter {
                     prefix = list.join(".");
                 }
                 Map<String, Object> map = AntiCheatPlugin.getInstance().getConfiguration().getConfigSectionValue(prefix, false);
-                if (map == null) return new ArrayList<>();
+                if (map == null) return emptyList;
                 return filterArgsList(new ArrayList<>(map.keySet()), args[1]).map(s -> (list.size() != 0 ? list.join(".") + "." : "") + s);
             }
             if (args[0].equals("bypass")) return filterArgsList(Arrays.asList("add", "remove"), args[1]);

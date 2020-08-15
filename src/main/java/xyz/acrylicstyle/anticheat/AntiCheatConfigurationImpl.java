@@ -121,4 +121,14 @@ public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
     public void setSpeedThreshold(int i) {
         this.set("speedThreshold", i);
     }
+
+    @Override
+    public void setDisableMovementCheck(boolean b) {
+        this.set("disableMovementCheck", b);
+    }
+
+    @Override
+    public boolean isDisableMovementCheck() {
+        return this.getBoolean("disableMovementCheck", false);
+    }
 }
