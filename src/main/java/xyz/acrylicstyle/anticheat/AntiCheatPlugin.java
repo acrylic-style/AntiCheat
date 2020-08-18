@@ -1,6 +1,10 @@
 package xyz.acrylicstyle.anticheat;
 
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -23,7 +27,13 @@ import xyz.acrylicstyle.anticheat.api.AntiCheatConfiguration;
 import xyz.acrylicstyle.anticheat.api.command.CommandBindings;
 import xyz.acrylicstyle.anticheat.command.RootCommand;
 import xyz.acrylicstyle.anticheat.command.RootCommandTC;
-import xyz.acrylicstyle.anticheat.commands.*;
+import xyz.acrylicstyle.anticheat.commands.BypassCommand;
+import xyz.acrylicstyle.anticheat.commands.CheckCommand;
+import xyz.acrylicstyle.anticheat.commands.GetConfigCommand;
+import xyz.acrylicstyle.anticheat.commands.NotifyCommand;
+import xyz.acrylicstyle.anticheat.commands.ReloadCommand;
+import xyz.acrylicstyle.anticheat.commands.SetConfigCommand;
+import xyz.acrylicstyle.anticheat.commands.VersionCommand;
 import xyz.acrylicstyle.anticheat.reflection.Reflections;
 import xyz.acrylicstyle.tomeito_api.providers.ConfigProvider;
 import xyz.acrylicstyle.tomeito_api.utils.Log;
@@ -95,7 +105,7 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         Block block = e.getBlock();
         Player player = e.getPlayer();
         Location playerLocation = e.getPlayer().getLocation();
-        //<editor-fold desc="??? Detection" defaultstate="collapsed">
+        //<editor-fold desc="FastBreak (Nuker) Detection" defaultstate="collapsed">
         double distance = negativeToPositive(block.getLocation().getX() - playerLocation.getX())
                 + negativeToPositive(block.getLocation().getY() - playerLocation.getY())
                 + negativeToPositive(block.getLocation().getZ() - playerLocation.getZ());
@@ -145,38 +155,35 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         return config.kickPlayer();
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerInteract(PlayerInteractEvent e) {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (e.getPlayer().hasPermission("anticheat.bypass")
-                        || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
-                //<editor-fold desc="ClickBot detection" defaultstate="collapsed">
-                if (!e.getPlayer().hasPermission("anticheat.bypass") && config.detectClickBot()) {
-                    if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
-                    EquipmentSlot slot = Reflections.getHand(e);
-                    if (slot != null && slot != EquipmentSlot.HAND) return;
-                    if (!cps.containsKey(e.getPlayer().getUniqueId()))
-                        cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
-                    if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
-                    int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
-                    if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
-                        maxCps.put(e.getPlayer().getUniqueId(), currentCps);
-                    new BukkitRunnable() {
-                        @Override
-                        public void run() {
-                            cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
-                        }
-                    }.runTaskLaterAsynchronously(AntiCheatPlugin.this, 20);
-                    if (currentCps >= config.getClicksThreshold()) {
-                        if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
-                            e.getPlayer().kickPlayer("You are sending too many packets!");
+        new Thread(() -> {
+            if (e.getPlayer().hasPermission("anticheat.bypass")
+                    || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
+            //<editor-fold desc="ClickBot detection" defaultstate="collapsed">
+            if (config.detectClickBot()) {
+                if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
+                EquipmentSlot slot = Reflections.getHand(e);
+                if (slot != null && slot != EquipmentSlot.HAND) return;
+                if (!cps.containsKey(e.getPlayer().getUniqueId()))
+                    cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
+                if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
+                int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
+                if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
+                    maxCps.put(e.getPlayer().getUniqueId(), currentCps);
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
                     }
+                }.runTaskLaterAsynchronously(AntiCheatPlugin.this, 20);
+                if (currentCps >= config.getClicksThreshold()) {
+                    if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
+                        e.getPlayer().kickPlayer("You are sending too many packets!");
                 }
-                //</editor-fold>
             }
-        }.runTaskAsynchronously(this);
+            //</editor-fold>
+        }).start();
     }
 
     public static CollectionList<UUID> teleportedRecently = new CollectionList<>();
