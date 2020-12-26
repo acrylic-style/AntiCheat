@@ -59,8 +59,6 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     @Override
     public void onEnable() {
         try {
-            this.saveResource("version.yml", true);
-            this.saveResource("config.yml", false);
             config = new AntiCheatConfigurationImpl("./plugins/AntiCheat/config.yml");
             bindings.addCommand("set", new SetConfigCommand());
             bindings.addCommand("reload", new ReloadCommand());
