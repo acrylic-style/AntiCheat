@@ -28,7 +28,7 @@ public class RootCommandTC implements TabCompleter {
         if (args.length == 2) {
             if (args[0].equals("check")) return filterArgsList(new CollectionList<>(Bukkit.getOnlinePlayers()).map(Player::getName), args[1]);
             if (args[0].equals("set") || args[0].equals("get")) {
-                CollectionList<String> list = ICollectionList.asList(args[0].split("\\."));
+                ICollectionList<String> list = ICollectionList.asList(args[0].split("\\."));
                 String prefix = "";
                 if (list.size() > 0) list.shift();
                 if (list.size() > 0) {

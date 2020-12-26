@@ -77,7 +77,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>api</artifactId>
-            <version>0.5.14b</version>
+            <version>0.7.2</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -89,7 +89,7 @@
         <dependency>
             <groupId>xyz.acrylicstyle</groupId>
             <artifactId>AntiCheatAPI</artifactId>
-            <version>0.0.6</version>
+            <version>0.0.7</version>
         </dependency>
     </dependencies>
 </project>

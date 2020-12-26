@@ -3,12 +3,13 @@ package xyz.acrylicstyle.anticheat.commands;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
 
 public class BypassCommand extends PlayerCommandExecutor {
     @Override
-    public void onCommand(Player player, String[] args) {
+    public void onCommand(@NotNull Player player, String[] args) {
         if (args.length == 0) {
             player.sendMessage(ChatColor.RED + "/ac bypass <add/remove> <player>");
             return;

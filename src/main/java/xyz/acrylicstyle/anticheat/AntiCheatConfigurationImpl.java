@@ -14,7 +14,7 @@ public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
 
     @Override
     public CollectionList<UUID> getBypassList() {
-        return ICollectionList.asList(this.getStringList("bypassList")).map(UUID::fromString);
+        return (CollectionList<UUID>) ICollectionList.asList(this.getStringList("bypassList")).map(UUID::fromString);
     }
 
     @Override
@@ -84,22 +84,32 @@ public class AntiCheatConfigurationImpl extends AntiCheatConfiguration {
 
     @Override
     public int getBlinkPacketsThreshold() {
-        return this.getInt("blinkPacketsThreshold", 40);
+        return this.getInt("blinkPacketsThreshold", 60);
     }
 
     @Override
     public int getFlyVerticalThreshold() {
-        return this.getInt("flyVerticalThreshold", 12);
+        return this.getInt("flyVerticalThreshold", 17);
     }
 
     @Override
     public int getClicksThreshold() {
-        return this.getInt("clicksThreshold", 35);
+        return this.getInt("clicksThreshold", 30);
     }
 
     @Override
     public int getSpeedThreshold() {
-        return this.getInt("speedThreshold", 30);
+        return this.getInt("speedThreshold", 14);
+    }
+
+    @Override
+    public int getBlockBreaksThreshold() {
+        return this.getInt("blockBreaks", 50);
+    }
+
+    @Override
+    public void setBlockBreaksThreshold(int i) {
+        this.set("blockBreaks", i);
     }
 
     @Override

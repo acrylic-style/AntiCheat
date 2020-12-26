@@ -6,8 +6,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
-import util.Collection;
-import util.CollectionList;
+import util.ICollection;
 import util.ICollectionList;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
@@ -27,14 +26,14 @@ public class RootCommand implements CommandExecutor {
             $sendMessage(sender);
             return true;
         }
-        Collection<String, PlayerCommandExecutor> commands = AntiCheatPlugin.bindings
+        ICollection<String, PlayerCommandExecutor> commands = AntiCheatPlugin.bindings
                 .filterKeys(cmd -> cmd.equals(args[0]))
                 .mapValues((k, v) -> (PlayerCommandExecutor) v);
         if (commands.size() == 0) {
             $sendMessage(sender);
             return true;
         }
-        CollectionList<String> argsList = ICollectionList.asList(args);
+        ICollectionList<String> argsList = ICollectionList.asList(args);
         argsList.shift();
         commands.forEach((cmd, customCommand) -> customCommand.onCommand((Player) sender, argsList.toArray(new String[0])));
         return true;

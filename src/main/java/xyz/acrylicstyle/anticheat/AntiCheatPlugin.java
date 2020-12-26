@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -35,7 +36,6 @@ import xyz.acrylicstyle.anticheat.commands.ReloadCommand;
 import xyz.acrylicstyle.anticheat.commands.SetConfigCommand;
 import xyz.acrylicstyle.anticheat.commands.VersionCommand;
 import xyz.acrylicstyle.anticheat.reflection.Reflections;
-import xyz.acrylicstyle.tomeito_api.providers.ConfigProvider;
 import xyz.acrylicstyle.tomeito_api.utils.Log;
 
 import java.util.Objects;
@@ -100,25 +100,31 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
         moves.add(e.getPlayer().getUniqueId(), new AtomicInteger());
     }
 
-    /*@EventHandler
+    private static final Collection<UUID, AtomicInteger> breaks = new Collection<>();
+
+    @EventHandler
     public void onBlockBreak(BlockBreakEvent e) {
-        Block block = e.getBlock();
-        Player player = e.getPlayer();
-        Location playerLocation = e.getPlayer().getLocation();
-        //<editor-fold desc="FastBreak (Nuker) Detection" defaultstate="collapsed">
-        double distance = negativeToPositive(block.getLocation().getX() - playerLocation.getX())
-                + negativeToPositive(block.getLocation().getY() - playerLocation.getY())
-                + negativeToPositive(block.getLocation().getZ() - playerLocation.getZ());
-        if (distance >= 10) {
-            sendMessageToAllOperators(ChatColor.RED + "Kicking player " + e.getPlayer().getName()
-                    + " for breaking a block that is located at too far! (Distance: " + distance + " blocks)");
-            Log.warn("Kicking player " + e.getPlayer().getName()
-                    + " for breaking a block that is located at too far! (Distance: " + distance + " blocks)");
-            e.getPlayer().kickPlayer("Detected illegal packet");
-            return;
-        }
-        //</editor-fold>
-    }*/
+        new Thread(() -> {
+            if (e.getPlayer().hasPermission("anticheat.bypass")
+                    || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
+            //<editor-fold desc="FastBreak (Nuker) Detection" defaultstate="collapsed">
+            if (!breaks.containsKey(e.getPlayer().getUniqueId()))
+                breaks.add(e.getPlayer().getUniqueId(), new AtomicInteger());
+            int b = breaks.get(e.getPlayer().getUniqueId()).incrementAndGet();
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    breaks.get(e.getPlayer().getUniqueId()).decrementAndGet();
+                }
+            }.runTaskLaterAsynchronously(this, 20);
+            if (b >= config.getBlockBreaksThreshold()) {
+                if (log(e.getPlayer(), "breaking too many blocks", "(" + b + " blocks/s)")) {
+                    kickPlayer(e.getPlayer(), "You are sending too many packets!");
+                }
+            }
+            //</editor-fold>
+        }).start();
+    }
 
     /*@EventHandler
     public void onBlockPlace(BlockPlaceEvent e) {
@@ -145,38 +151,42 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     public static Collection<UUID, String> messages = new Collection<>();
 
     private boolean log(Player player, String reason, String value) {
-        if (config.kickPlayer()) {
-            sendMessageToAllOperators(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
-            Log.info(PREFIX + ChatColor.RED + "Kicking player " + player.getName() + " for " + reason + " " + value);
+        boolean kick = config.kickPlayer();
+        if (kick) {
+            sendMessageToAllOperators(PREFIX + ChatColor.RED + "Kicking player "
+                    + ChatColor.YELLOW + player.getName() + ChatColor.RED + " for " + reason + " " + value);
+            Log.info(PREFIX + ChatColor.RED + "Kicking player "
+                    + ChatColor.YELLOW + player.getName() + ChatColor.RED + " for " + reason + " " + value);
         } else {
             messages.remove(player.getUniqueId());
             messages.add(player.getUniqueId(), PREFIX + ChatColor.RED + player.getName() + " is possibly " + reason + " " + value);
+            // add to queue, prevent log spamming
         }
-        return config.kickPlayer();
+        return kick;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerInteract(PlayerInteractEvent e) {
         new Thread(() -> {
+            if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
+            EquipmentSlot slot = Reflections.getHand(e);
+            if (slot != null && slot != EquipmentSlot.HAND) return;
+            if (!cps.containsKey(e.getPlayer().getUniqueId()))
+                cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
+            if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
+            int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
+            if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
+                maxCps.put(e.getPlayer().getUniqueId(), currentCps);
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
+                }
+            }.runTaskLaterAsynchronously(AntiCheatPlugin.this, 20);
             if (e.getPlayer().hasPermission("anticheat.bypass")
                     || config.getBypassList().contains(e.getPlayer().getUniqueId())) return;
             //<editor-fold desc="ClickBot detection" defaultstate="collapsed">
             if (config.detectClickBot()) {
-                if (e.getAction() == Action.LEFT_CLICK_BLOCK) return; // dont count block breaks
-                EquipmentSlot slot = Reflections.getHand(e);
-                if (slot != null && slot != EquipmentSlot.HAND) return;
-                if (!cps.containsKey(e.getPlayer().getUniqueId()))
-                    cps.add(e.getPlayer().getUniqueId(), new AtomicInteger());
-                if (!maxCps.containsKey(e.getPlayer().getUniqueId())) maxCps.add(e.getPlayer().getUniqueId(), 0);
-                int currentCps = cps.get(e.getPlayer().getUniqueId()).incrementAndGet();
-                if (maxCps.get(e.getPlayer().getUniqueId()) < currentCps)
-                    maxCps.put(e.getPlayer().getUniqueId(), currentCps);
-                new BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        cps.get(e.getPlayer().getUniqueId()).decrementAndGet();
-                    }
-                }.runTaskLaterAsynchronously(AntiCheatPlugin.this, 20);
                 if (currentCps >= config.getClicksThreshold()) {
                     if (log(e.getPlayer(), "clicking too fast", "(" + currentCps + " cps)"))
                         e.getPlayer().kickPlayer("You are sending too many packets!");
@@ -327,15 +337,15 @@ public class AntiCheatPlugin extends JavaPlugin implements Listener, AntiCheat {
     }
 
     @Override
-    public @NotNull ConfigProvider getVersionInfo() {
-        throw new UnsupportedOperationException("version.yml was removed from the plugin");
-    }
-
-    @Override
     public int getPlayerClicks(@NotNull UUID uuid) {
         AtomicInteger atomicInteger = cps.get(uuid);
         if (atomicInteger == null) return 0;
         return atomicInteger.get();
+    }
+
+    @Override
+    public int getMaxPlayerClicks(@NotNull UUID uuid) {
+        return maxCps.getOrDefault(uuid, 0);
     }
 
     @Override

@@ -2,13 +2,14 @@ package xyz.acrylicstyle.anticheat.commands;
 
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
 import xyz.acrylicstyle.anticheat.AntiCheatPlugin;
 import xyz.acrylicstyle.tomeito_api.command.PlayerCommandExecutor;
 import xyz.acrylicstyle.tomeito_api.utils.Log;
 
 public class SetConfigCommand extends PlayerCommandExecutor {
     @Override
-    public void onCommand(Player sender, String[] args) {
+    public void onCommand(@NotNull Player sender, String[] args) {
         if (args.length < 2) {
             sender.sendMessage(ChatColor.RED + "/ac set <key> <value>");
             return;
